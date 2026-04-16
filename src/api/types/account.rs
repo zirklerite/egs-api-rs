@@ -5,7 +5,7 @@ use std::collections::HashMap;
 /// Structure that holds all account data
 #[allow(missing_docs)]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct AccountData {
     pub age_group: String,
     pub can_update_display_name: bool,
