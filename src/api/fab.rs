@@ -84,7 +84,17 @@ impl EpicAPI {
                             ))
                         }
                         Some(mut man) => {
-                            man.set_custom_field("SourceURL", distribution_point_url);
+                            // `distribution_point_url` is the full signed
+                            // .manifest URL (e.g. `.../CloudDir/Foo.manifest?f_token=SIG`).
+                            // For chunk URLs we need the CloudDir directory,
+                            // plus the same signed query — Fastly/Akamai URL
+                            // signatures cover the whole CloudDir path prefix.
+                            let (source_url, source_query) =
+                                split_manifest_url(distribution_point_url);
+                            man.set_custom_field("SourceURL", &source_url);
+                            if let Some(q) = source_query {
+                                man.set_custom_field("SourceQuery", &q);
+                            }
                             Ok(man)
                         }
                     }
@@ -463,5 +473,45 @@ impl EpicAPI {
             listing_uid
         );
         self.authorized_get_json(&url).await
+    }
+}
+
+/// Split a full signed manifest URL into `(CloudDir base, query string)`.
+///
+/// Input:  `https://host/.../CloudDir/Name.manifest?f_token=SIG`
+/// Output: `("https://host/.../CloudDir", Some("f_token=SIG"))`
+fn split_manifest_url(url: &str) -> (String, Option<String>) {
+    let (path_part, query_part) = match url.split_once('?') {
+        Some((p, q)) => (p, Some(q.to_string())),
+        None => (url, None),
+    };
+    let base = match path_part.rsplit_once('/') {
+        Some((base, _filename)) => base.to_string(),
+        None => path_part.to_string(),
+    };
+    (base, query_part)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_manifest_url;
+
+    #[test]
+    fn split_manifest_url_with_query() {
+        let (base, q) = split_manifest_url(
+            "https://egdownload.fastly-edge.com/Builds/Rocket/Automated/X/CloudDir/Name.manifest?f_token=1776405079_abc",
+        );
+        assert_eq!(
+            base,
+            "https://egdownload.fastly-edge.com/Builds/Rocket/Automated/X/CloudDir"
+        );
+        assert_eq!(q.as_deref(), Some("f_token=1776405079_abc"));
+    }
+
+    #[test]
+    fn split_manifest_url_no_query() {
+        let (base, q) = split_manifest_url("https://host/path/file.manifest");
+        assert_eq!(base, "https://host/path");
+        assert_eq!(q, None);
     }
 }

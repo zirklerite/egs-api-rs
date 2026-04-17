@@ -492,6 +492,7 @@ impl DownloadManifest {
         };
 
         let chunk_dir = DownloadManifest::chunk_dir(self.manifest_file_version);
+        let query = self.custom_field("SourceQuery");
         let mut result: HashMap<String, Url> = HashMap::new();
 
         for (guid, hash) in &self.chunk_hash_list {
@@ -501,18 +502,19 @@ impl DownloadManifest {
                 }
                 Some(group) => group,
             };
-            result.insert(
-                guid.clone(),
-                Url::parse(&format!(
-                    "{}/{}/{:02}/{:016X}_{}.chunk",
-                    url,
-                    chunk_dir,
-                    *group_num,
-                    *hash,
-                    guid.to_uppercase()
-                ))
-                .unwrap(),
+            let mut chunk_url = format!(
+                "{}/{}/{:02}/{:016X}_{}.chunk",
+                url,
+                chunk_dir,
+                *group_num,
+                *hash,
+                guid.to_uppercase()
             );
+            if let Some(q) = &query {
+                chunk_url.push('?');
+                chunk_url.push_str(q);
+            }
+            result.insert(guid.clone(), Url::parse(&chunk_url).unwrap());
         }
         Some(result)
     }
