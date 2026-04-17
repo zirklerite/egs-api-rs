@@ -400,14 +400,21 @@ mod tests {
     #[test]
     fn deserialize_reviews_response() {
         let json = r#"{
-            "results": [
+            "elements": [
                 {
                     "uid": "review-001",
                     "rating": 5,
                     "title": "Great asset!",
                     "content": "Works perfectly in UE 5.4",
                     "createdAt": "2026-01-10T12:00:00Z",
-                    "user": {"displayName": "TestUser42"}
+                    "lastModifiedAt": "2026-01-10T12:00:00Z",
+                    "authorEpicId": "epic-42",
+                    "authorDisplayName": "TestUser42",
+                    "helpfulNum": 3,
+                    "replyNum": 0,
+                    "status": "ACTIVE",
+                    "targetId": "listing-uid",
+                    "targetOwner": "seller-id"
                 },
                 {
                     "uid": "review-002",
@@ -415,48 +422,54 @@ mod tests {
                     "title": "Decent",
                     "content": "Needs better docs",
                     "createdAt": "2026-01-11T08:30:00Z",
-                    "user": {"displayName": "AnotherDev"}
+                    "lastModifiedAt": "2026-01-11T08:30:00Z",
+                    "authorEpicId": "epic-99",
+                    "authorDisplayName": "AnotherDev",
+                    "helpfulNum": 0,
+                    "replyNum": 1,
+                    "status": "ACTIVE",
+                    "targetId": "listing-uid",
+                    "targetOwner": "seller-id"
                 }
             ],
-            "count": 2,
-            "cursors": {"next": null, "previous": null}
+            "paging": {"count": 5, "start": 0, "total": 10}
         }"#;
         let reviews: FabReviewsResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(reviews.results.len(), 2);
-        assert_eq!(reviews.count, Some(2));
-        let r0 = &reviews.results[0];
+        assert_eq!(reviews.elements.len(), 2);
+        let paging = reviews.paging.as_ref().unwrap();
+        assert_eq!(paging.total, Some(10));
+        assert_eq!(paging.start, Some(0));
+        let r0 = &reviews.elements[0];
         assert_eq!(r0.uid.as_deref(), Some("review-001"));
         assert_eq!(r0.rating, Some(5));
         assert_eq!(r0.title.as_deref(), Some("Great asset!"));
-        assert_eq!(
-            r0.user.as_ref().unwrap().display_name.as_deref(),
-            Some("TestUser42")
-        );
+        assert_eq!(r0.author_display_name.as_deref(), Some("TestUser42"));
+        assert_eq!(r0.helpful_num, Some(3));
     }
 
     #[test]
     fn deserialize_reviews_empty() {
-        let json = r#"{"results": [], "count": 0}"#;
+        let json = r#"{"elements": [], "paging": {"count": 5, "start": 0, "total": 0}}"#;
         let reviews: FabReviewsResponse = serde_json::from_str(json).unwrap();
-        assert!(reviews.results.is_empty());
-        assert_eq!(reviews.count, Some(0));
+        assert!(reviews.elements.is_empty());
+        assert_eq!(reviews.paging.as_ref().unwrap().total, Some(0));
     }
 
     #[test]
     fn reviews_roundtrip() {
         let reviews = FabReviewsResponse {
-            results: vec![FabReview {
+            elements: vec![FabReview {
                 uid: Some("r1".to_string()),
                 rating: Some(4),
                 title: Some("Good".to_string()),
-                content: None,
-                created_at: None,
-                user: Some(FabReviewUser {
-                    display_name: Some("User1".to_string()),
-                }),
+                author_display_name: Some("User1".to_string()),
+                ..Default::default()
             }],
-            count: Some(1),
-            cursors: None,
+            paging: Some(FabReviewsPaging {
+                count: Some(5),
+                start: Some(0),
+                total: Some(1),
+            }),
         };
         let json = serde_json::to_string(&reviews).unwrap();
         let roundtrip: FabReviewsResponse = serde_json::from_str(&json).unwrap();
@@ -558,15 +571,26 @@ mod tests {
 }
 
 /// Paginated reviews response from `GET /i/store/listings/{uid}/reviews`.
+///
+/// Uses offset-style `paging` (`count`/`start`/`total`) rather than cursor pagination.
 #[allow(missing_docs)]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FabReviewsResponse {
-    pub results: Vec<FabReview>,
-    pub count: Option<u64>,
-    pub cursors: Option<FabSearchCursors>,
+    pub elements: Vec<FabReview>,
+    pub paging: Option<FabReviewsPaging>,
 }
 
-/// A single review on a listing.
+/// Offset-style paging envelope used by the reviews endpoint.
+#[allow(missing_docs)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FabReviewsPaging {
+    pub count: Option<u64>,
+    pub start: Option<u64>,
+    pub total: Option<u64>,
+}
+
+/// A single review on a listing. All fields are flat — author info is no longer
+/// nested under a `user` object.
 #[allow(missing_docs)]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -576,15 +600,14 @@ pub struct FabReview {
     pub title: Option<String>,
     pub content: Option<String>,
     pub created_at: Option<String>,
-    pub user: Option<FabReviewUser>,
-}
-
-/// User info within a review.
-#[allow(missing_docs)]
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FabReviewUser {
-    pub display_name: Option<String>,
+    pub last_modified_at: Option<String>,
+    pub author_epic_id: Option<String>,
+    pub author_display_name: Option<String>,
+    pub helpful_num: Option<u32>,
+    pub reply_num: Option<u32>,
+    pub status: Option<String>,
+    pub target_id: Option<String>,
+    pub target_owner: Option<String>,
 }
 
 /// Fab user context from `GET /i/users/context`.
