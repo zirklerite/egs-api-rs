@@ -273,10 +273,12 @@ impl EpicAPI {
     }
 
     /// Get pricing for a specific listing. Public endpoint.
+    ///
+    /// Returns the same `{offers:[...]}` envelope as the bulk endpoint.
     pub async fn fab_listing_prices(
         &self,
         uid: &str,
-    ) -> Result<Vec<crate::api::types::fab_search::FabPriceInfo>, EpicAPIError> {
+    ) -> Result<crate::api::types::fab_search::FabBulkPricesResponse, EpicAPIError> {
         let url = format!("https://www.fab.com/i/listings/{}/prices-infos", uid);
         self.get_json(&url).await
     }

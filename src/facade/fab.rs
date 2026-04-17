@@ -195,7 +195,7 @@ impl EpicGames {
     }
 
     /// Get pricing for a specific listing. Returns `None` on error.
-    pub async fn fab_listing_prices(&self, uid: &str) -> Option<Vec<fab_search::FabPriceInfo>> {
+    pub async fn fab_listing_prices(&self, uid: &str) -> Option<fab_search::FabBulkPricesResponse> {
         self.egs.fab_listing_prices(uid).await.ok()
     }
 
@@ -203,7 +203,7 @@ impl EpicGames {
     pub async fn try_fab_listing_prices(
         &self,
         uid: &str,
-    ) -> Result<Vec<fab_search::FabPriceInfo>, EpicAPIError> {
+    ) -> Result<fab_search::FabBulkPricesResponse, EpicAPIError> {
         self.egs.fab_listing_prices(uid).await
     }
 
