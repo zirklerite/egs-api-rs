@@ -329,7 +329,7 @@ impl EpicGames {
         self.egs.fab_add_to_library(listing_uid).await
     }
 
-    /// Fetch all available asset formats for a listing. Returns `None` on error.
+    /// Fetch all asset formats available for a listing. Returns `None` on error.
     pub async fn fab_listing_formats(
         &self,
         listing_uid: &str,
@@ -337,7 +337,7 @@ impl EpicGames {
         self.egs.fab_listing_formats(listing_uid).await.ok()
     }
 
-    /// Fetch all available asset formats. Returns full `Result`.
+    /// Fetch all asset formats available for a listing. Returns full `Result`.
     pub async fn try_fab_listing_formats(
         &self,
         listing_uid: &str,

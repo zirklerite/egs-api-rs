@@ -448,7 +448,12 @@ impl EpicAPI {
         }
     }
 
-    /// Fetch all available asset formats for a listing (UE, Unity, FBX, Blender, etc.).
+    /// Fetch all asset formats available for a listing.
+    ///
+    /// Returns an array of [`FabListingFormat`](crate::api::types::fab_search::FabListingFormat)
+    /// objects (one per format — e.g. `unreal-engine`, `fbx`, `blender`). In
+    /// practice current listings have a single primary format, but the endpoint
+    /// is array-shaped.
     pub async fn fab_listing_formats(
         &self,
         listing_uid: &str,

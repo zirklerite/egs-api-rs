@@ -115,10 +115,13 @@ pub struct FabListingUeFormat {
 /// Asset format type descriptor.
 #[allow(missing_docs)]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FabAssetFormatType {
     pub code: Option<String>,
     pub icon: Option<String>,
     pub name: Option<String>,
+    pub group_name: Option<String>,
+    pub extensions: Option<Vec<String>>,
 }
 
 /// Technical specifications for a UE asset.
@@ -362,39 +365,52 @@ mod tests {
 
     #[test]
     fn deserialize_listing_formats() {
-        let json = r#"[
-            {
-                "assetFormatType": {"code": "unreal-engine", "icon": "unreal-engine", "name": "Unreal Engine"},
-                "files": [{"uid": "file-001", "name": "MyAsset V1", "fileSize": 3444643477}]
+        let json = r#"[{
+            "assetFormatType": {
+                "code": "unreal-engine",
+                "extensions": ["uasset", "uproject"],
+                "icon": "unreal-engine",
+                "name": "Unreal Engine",
+                "groupName": "Game Engine Formats"
             },
-            {
-                "assetFormatType": {"code": "fbx", "icon": "cube", "name": "FBX"},
-                "files": [{"uid": "file-002", "name": "myasset.zip", "fileSize": 1234567}]
-            }
-        ]"#;
+            "developmentPlatforms": [],
+            "distributionMethod": "complete_project",
+            "techDetails": {"animation": null, "audio": null},
+            "technicalDetails": "<p>Features: ...</p>",
+            "versions": [
+                {
+                    "artifactId": "Characteaf02405626a5V1",
+                    "engineVersions": ["UE_4.19"],
+                    "fileType": "source",
+                    "name": "UE4CCv1.11 4.19",
+                    "targetPlatforms": ["Windows", "Win32"],
+                    "uid": "3466f572-d77a-4b4f-85ec-6b83698a87b6"
+                }
+            ]
+        }]"#;
         let formats: Vec<FabListingFormat> = serde_json::from_str(json).unwrap();
-        assert_eq!(formats.len(), 2);
-        let ue = &formats[0];
-        assert_eq!(
-            ue.asset_format_type.as_ref().unwrap().code.as_deref(),
-            Some("unreal-engine")
-        );
-        let files = ue.files.as_ref().unwrap();
-        assert_eq!(files[0].uid.as_deref(), Some("file-001"));
-        assert_eq!(files[0].file_size, Some(3444643477));
-        let fbx = &formats[1];
-        assert_eq!(
-            fbx.asset_format_type.as_ref().unwrap().code.as_deref(),
-            Some("fbx")
-        );
+        assert_eq!(formats.len(), 1);
+        let format = &formats[0];
+        let aft = format.asset_format_type.as_ref().unwrap();
+        assert_eq!(aft.code.as_deref(), Some("unreal-engine"));
+        assert_eq!(aft.group_name.as_deref(), Some("Game Engine Formats"));
+        assert_eq!(aft.extensions.as_ref().unwrap().len(), 2);
+        assert_eq!(format.distribution_method.as_deref(), Some("complete_project"));
+        let versions = format.versions.as_ref().unwrap();
+        assert_eq!(versions.len(), 1);
+        assert_eq!(versions[0].artifact_id.as_deref(), Some("Characteaf02405626a5V1"));
+        assert_eq!(versions[0].engine_versions.as_ref().unwrap()[0], "UE_4.19");
     }
 
     #[test]
-    fn deserialize_listing_formats_empty_files() {
-        let json = r#"[{"assetFormatType": {"code": "blender", "name": "Blender"}, "files": []}]"#;
+    fn deserialize_listing_formats_empty_versions() {
+        let json = r#"[{
+            "assetFormatType": {"code": "blender", "name": "Blender"},
+            "versions": []
+        }]"#;
         let formats: Vec<FabListingFormat> = serde_json::from_str(json).unwrap();
         assert_eq!(formats.len(), 1);
-        assert!(formats[0].files.as_ref().unwrap().is_empty());
+        assert!(formats[0].versions.as_ref().unwrap().is_empty());
     }
 
     #[test]
@@ -650,25 +666,33 @@ pub struct FabSearchParams {
     pub seller: Option<String>,
 }
 
-/// All available asset formats for a listing from `GET /i/listings/{uid}/asset-formats`.
+/// Asset format info for a listing from `GET /i/listings/{uid}/asset-formats`.
+///
+/// Returns a single format object (listings currently have one primary format).
+/// `versions` enumerates artifact IDs / engine versions / platforms available
+/// under that format.
 #[allow(missing_docs)]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FabListingFormat {
     pub asset_format_type: Option<FabAssetFormatType>,
-    pub files: Option<Vec<FabFormatFile>>,
+    pub development_platforms: Option<Vec<String>>,
+    pub distribution_method: Option<String>,
+    pub tech_details: Option<serde_json::Value>,
+    pub technical_details: Option<String>,
+    pub versions: Option<Vec<FabListingFormatVersion>>,
 }
 
-/// A downloadable file within a listing format.
+/// A downloadable version of a listing format (one artifact = one
+/// engine-version/platform combination).
 #[allow(missing_docs)]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FabFormatFile {
+pub struct FabListingFormatVersion {
     pub uid: Option<String>,
+    pub artifact_id: Option<String>,
     pub name: Option<String>,
-    pub file_size: Option<u64>,
-    pub asset_type: Option<String>,
-    pub platforms_included: Option<Vec<String>>,
-    pub initial_engine_version: Option<String>,
+    pub file_type: Option<String>,
     pub engine_versions: Option<Vec<String>>,
+    pub target_platforms: Option<Vec<String>>,
 }
