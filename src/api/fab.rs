@@ -225,14 +225,23 @@ impl EpicAPI {
         self.get_json(&url).await
     }
 
-    /// Get UE-specific format details for a listing. Public endpoint.
-    pub async fn fab_listing_ue_formats(
+    /// Get rich format info for a specific format code on a listing.
+    /// Public endpoint — no auth required.
+    ///
+    /// Hits `GET /i/listings/{uid}/asset-formats/{code}` and returns a
+    /// single [`FabListingFormat`](crate::api::types::fab_search::FabListingFormat)
+    /// with `versions`, `distributionMethod`, `technicalDetails`, and
+    /// `techDetails` populated — the companion general
+    /// `/asset-formats` endpoint returns the same struct but only
+    /// fills `assetFormatType`.
+    pub async fn fab_listing_format(
         &self,
         uid: &str,
-    ) -> Result<Vec<crate::api::types::fab_search::FabListingUeFormat>, EpicAPIError> {
+        code: &str,
+    ) -> Result<crate::api::types::fab_search::FabListingFormat, EpicAPIError> {
         let url = format!(
-            "https://www.fab.com/i/listings/{}/asset-formats/unreal-engine",
-            uid
+            "https://www.fab.com/i/listings/{}/asset-formats/{}",
+            uid, code
         );
         self.get_json(&url).await
     }

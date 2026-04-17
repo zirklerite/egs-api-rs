@@ -139,27 +139,29 @@ async fn main() {
 
                 println!("\n=== UE Format Details ===\n");
 
-                match egs.fab_listing_ue_formats(&first.uid).await {
-                    Some(formats) => {
-                        println!("  {} format(s):", formats.len());
-                        for fmt in &formats {
-                            if let Some(ref ft) = fmt.asset_format_type {
+                match egs.fab_listing_format(&first.uid, "unreal-engine").await {
+                    Some(fmt) => {
+                        if let Some(ref ft) = fmt.asset_format_type {
+                            println!(
+                                "    Format: {} ({})",
+                                ft.name.as_deref().unwrap_or("?"),
+                                ft.code.as_deref().unwrap_or("?")
+                            );
+                        }
+                        if let Some(ref method) = fmt.distribution_method {
+                            println!("    Distribution: {}", method);
+                        }
+                        if let Some(ref versions) = fmt.versions {
+                            println!("    {} version(s):", versions.len());
+                            for v in versions {
+                                let ev = v.engine_versions.as_ref().map(|e| e.join(",")).unwrap_or_default();
+                                let tp = v.target_platforms.as_ref().map(|e| e.join(",")).unwrap_or_default();
                                 println!(
-                                    "    Format: {} ({})",
-                                    ft.name.as_deref().unwrap_or("?"),
-                                    ft.code.as_deref().unwrap_or("?")
+                                    "      {} — UE [{}] — platforms [{}]",
+                                    v.artifact_id.as_deref().unwrap_or("?"),
+                                    ev,
+                                    tp
                                 );
-                            }
-                            if let Some(ref specs) = fmt.technical_specs {
-                                if let Some(ref versions) = specs.unreal_engine_engine_versions {
-                                    println!("    Engine versions: {}", versions.join(", "));
-                                }
-                                if let Some(ref platforms) = specs.unreal_engine_target_platforms {
-                                    println!("    Platforms: {}", platforms.join(", "));
-                                }
-                                if let Some(ref method) = specs.unreal_engine_distribution_method {
-                                    println!("    Distribution: {}", method);
-                                }
                             }
                         }
                     }
@@ -216,10 +218,10 @@ async fn main() {
 
                 match egs.fab_listing_prices(&first.uid).await {
                     Some(prices) => {
-                        if prices.is_empty() {
+                        if prices.offers.is_empty() {
                             println!("  No pricing info (may be free)");
                         } else {
-                            for price in &prices {
+                            for price in &prices.offers {
                                 let currency = price.currency_code.as_deref().unwrap_or("?");
                                 let amount = price
                                     .price
@@ -255,12 +257,16 @@ async fn main() {
                     .await
                 {
                     Some(reviews_resp) => {
-                        println!("  Total reviews: {}", reviews_resp.count.unwrap_or(0));
-                        for review in reviews_resp.results.iter().take(3) {
+                        let total = reviews_resp
+                            .paging
+                            .as_ref()
+                            .and_then(|p| p.total)
+                            .unwrap_or(0);
+                        println!("  Total reviews: {}", total);
+                        for review in reviews_resp.elements.iter().take(3) {
                             let author = review
-                                .user
-                                .as_ref()
-                                .and_then(|u| u.display_name.as_deref())
+                                .author_display_name
+                                .as_deref()
                                 .unwrap_or("anonymous");
                             let rating = review
                                 .rating

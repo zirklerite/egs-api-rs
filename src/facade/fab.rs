@@ -120,20 +120,24 @@ impl EpicGames {
         self.egs.fab_listing(uid).await
     }
 
-    /// Get UE-specific format details for a listing. Returns `None` on error.
-    pub async fn fab_listing_ue_formats(
+    /// Get rich format details for a specific format code. Returns
+    /// `None` on error.
+    pub async fn fab_listing_format(
         &self,
         uid: &str,
-    ) -> Option<Vec<fab_search::FabListingUeFormat>> {
-        self.egs.fab_listing_ue_formats(uid).await.ok()
+        code: &str,
+    ) -> Option<fab_search::FabListingFormat> {
+        self.egs.fab_listing_format(uid, code).await.ok()
     }
 
-    /// Get UE-specific format details. Returns full `Result`.
-    pub async fn try_fab_listing_ue_formats(
+    /// Get rich format details for a specific format code. Returns
+    /// full `Result`.
+    pub async fn try_fab_listing_format(
         &self,
         uid: &str,
-    ) -> Result<Vec<fab_search::FabListingUeFormat>, EpicAPIError> {
-        self.egs.fab_listing_ue_formats(uid).await
+        code: &str,
+    ) -> Result<fab_search::FabListingFormat, EpicAPIError> {
+        self.egs.fab_listing_format(uid, code).await
     }
 
     /// Get listing state (ownership, wishlist, review). Returns `None` on error.

@@ -103,15 +103,6 @@ pub struct FabListingDetail {
     pub review_count: Option<u64>,
 }
 
-/// UE-specific asset format info from `GET /i/listings/{uid}/asset-formats/unreal-engine`.
-#[allow(missing_docs)]
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FabListingUeFormat {
-    pub asset_format_type: Option<FabAssetFormatType>,
-    pub technical_specs: Option<FabTechnicalSpecs>,
-}
-
 /// Asset format type descriptor.
 #[allow(missing_docs)]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -122,17 +113,6 @@ pub struct FabAssetFormatType {
     pub name: Option<String>,
     pub group_name: Option<String>,
     pub extensions: Option<Vec<String>>,
-}
-
-/// Technical specifications for a UE asset.
-#[allow(missing_docs)]
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FabTechnicalSpecs {
-    pub technical_details: Option<String>,
-    pub unreal_engine_engine_versions: Option<Vec<String>>,
-    pub unreal_engine_target_platforms: Option<Vec<String>>,
-    pub unreal_engine_distribution_method: Option<String>,
 }
 
 /// Bulk pricing response from `GET /i/listings/prices-infos`.
@@ -262,29 +242,52 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_ue_format() {
+    fn deserialize_listing_format_rich() {
+        // Fixture captured from live /asset-formats/{code} endpoint.
         let json = r#"{
-            "assetFormatType": {"code": "ue-asset", "icon": "unreal-icon", "name": "Unreal Engine Asset"},
-            "technicalSpecs": {
-                "technicalDetails": "Verts: 12000, Tris: 8000",
-                "unrealEngineEngineVersions": ["5.3", "5.4", "5.5"],
-                "unrealEngineTargetPlatforms": ["Windows", "Linux", "Mac"],
-                "unrealEngineDistributionMethod": "asset-pack"
-            }
+            "assetFormatType": {
+                "code": "unreal-engine",
+                "extensions": ["uasset", "uproject"],
+                "icon": "unreal-engine",
+                "name": "Unreal Engine",
+                "groupName": "Game Engine Formats"
+            },
+            "developmentPlatforms": [],
+            "distributionMethod": "complete_project",
+            "techDetails": {"animation": null, "audio": null},
+            "technicalDetails": "<p>Features: ...</p>",
+            "versions": [
+                {
+                    "artifactId": "Characteaf02405626a5V1",
+                    "engineVersions": ["UE_4.19"],
+                    "fileType": "source",
+                    "name": "UE4CCv1.11 4.19",
+                    "targetPlatforms": ["Windows", "Win32"],
+                    "uid": "3466f572-d77a-4b4f-85ec-6b83698a87b6"
+                },
+                {
+                    "artifactId": "Characteaf02405626a5V2",
+                    "engineVersions": ["UE_5.3", "UE_5.4"],
+                    "fileType": "source",
+                    "name": "UE4CCv1.11 5.3+",
+                    "targetPlatforms": ["Windows"],
+                    "uid": "00000000-0000-0000-0000-000000000002"
+                }
+            ]
         }"#;
-        let format: FabListingUeFormat = serde_json::from_str(json).unwrap();
-        let fmt_type = format.asset_format_type.as_ref().unwrap();
-        assert_eq!(fmt_type.code.as_deref(), Some("ue-asset"));
-        assert_eq!(fmt_type.name.as_deref(), Some("Unreal Engine Asset"));
-        let specs = format.technical_specs.as_ref().unwrap();
-        let versions = specs.unreal_engine_engine_versions.as_ref().unwrap();
-        assert_eq!(versions, &["5.3", "5.4", "5.5"]);
-        let platforms = specs.unreal_engine_target_platforms.as_ref().unwrap();
-        assert_eq!(platforms.len(), 3);
+        let format: FabListingFormat = serde_json::from_str(json).unwrap();
+        let aft = format.asset_format_type.as_ref().unwrap();
+        assert_eq!(aft.code.as_deref(), Some("unreal-engine"));
+        assert_eq!(aft.group_name.as_deref(), Some("Game Engine Formats"));
         assert_eq!(
-            specs.unreal_engine_distribution_method.as_deref(),
-            Some("asset-pack")
+            format.distribution_method.as_deref(),
+            Some("complete_project")
         );
+        assert!(format.technical_details.as_ref().unwrap().contains("Features"));
+        assert!(format.tech_details.is_some());
+        let versions = format.versions.as_ref().unwrap();
+        assert_eq!(versions.len(), 2);
+        assert_eq!(versions[1].engine_versions.as_ref().unwrap().len(), 2);
     }
 
     #[test]

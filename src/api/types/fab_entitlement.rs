@@ -1,4 +1,4 @@
-use super::fab_search::{FabLicense, FabListingUeFormat, FabSearchCursors};
+use super::fab_search::{FabLicense, FabListingFormat, FabSearchCursors};
 use serde::{Deserialize, Serialize};
 
 /// Search params for `fab_library_entitlements()`.
@@ -67,7 +67,7 @@ pub struct FabEntitlementListing {
     pub title: Option<String>,
     pub is_mature: Option<bool>,
     pub last_updated_at: Option<String>,
-    pub asset_formats: Option<Vec<FabListingUeFormat>>,
+    pub asset_formats: Option<Vec<FabListingFormat>>,
 }
 
 #[cfg(test)]

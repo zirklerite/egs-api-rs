@@ -191,7 +191,7 @@ distinctions.
 | `fab_file_download_info(listing_id, format_id, file_id)` | Download info for a specific Fab file |
 | `fab_search(params)` | Search/browse listings with filters, sorting, pagination |
 | `fab_listing(uid)` | Full listing detail (title, seller, category, ratings) |
-| `fab_listing_ue_formats(uid)` | UE-specific format specs (engine versions, platforms) |
+| `fab_listing_format(uid, code)` | Rich format specs for one format code (engine versions, platforms, artifacts) |
 | `fab_listing_state(uid)` | Ownership, wishlist, and review state for a listing |
 | `fab_listing_states_bulk(listing_ids)` | Bulk check listing states |
 | `fab_bulk_prices(offer_ids)` | Bulk fetch pricing for multiple offers |
