@@ -103,25 +103,30 @@ impl EpicAPI {
         }
     }
 
-    /// Fetch all Fab library items, paginating internally.
+    /// Fetch all Fab library items, paginating internally. `count`
+    /// controls the per-page size requested from Fab; `None` keeps the
+    /// legacy default of 100. (Fab may silently cap below the
+    /// requested value.)
     pub async fn fab_library_items(
         &mut self,
         account_id: String,
+        count: Option<u32>,
     ) -> Result<FabLibrary, EpicAPIError> {
+        let per_page = count.unwrap_or(100);
         let mut library = FabLibrary::default();
 
         loop {
             let url = match &library.cursors.next {
                 None => {
                     format!(
-                        "https://www.fab.com/e/accounts/{}/ue/library?count=100",
-                        account_id
+                        "https://www.fab.com/e/accounts/{}/ue/library?count={}",
+                        account_id, per_page
                     )
                 }
                 Some(c) => {
                     format!(
-                        "https://www.fab.com/e/accounts/{}/ue/library?cursor={}&count=100",
-                        account_id, c
+                        "https://www.fab.com/e/accounts/{}/ue/library?cursor={}&count={}",
+                        account_id, c, per_page
                     )
                 }
             };

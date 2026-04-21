@@ -299,7 +299,7 @@ async fn main() {
 
     println!("\n=== Fab Library ===\n");
 
-    match egs.fab_library_items(account_id).await {
+    match egs.fab_library_items(account_id, None).await {
         Some(library) => {
             println!("Total Fab library items: {}", library.results.len());
             for item in library.results.iter().take(10) {

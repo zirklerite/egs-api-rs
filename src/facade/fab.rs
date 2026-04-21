@@ -28,11 +28,14 @@ impl EpicGames {
     }
 
     /// Like [`fab_library_items`](Self::fab_library_items), but returns a `Result` instead of swallowing errors.
+    /// `count` is the requested per-page size; `None` uses the
+    /// upstream default.
     pub async fn try_fab_library_items(
         &mut self,
         account_id: String,
+        count: Option<u32>,
     ) -> Result<crate::api::types::fab_library::FabLibrary, EpicAPIError> {
-        self.egs.fab_library_items(account_id).await
+        self.egs.fab_library_items(account_id, count).await
     }
 
     /// Fetch the user Fab library.
@@ -41,8 +44,9 @@ impl EpicGames {
     pub async fn fab_library_items(
         &mut self,
         account_id: String,
+        count: Option<u32>,
     ) -> Option<crate::api::types::fab_library::FabLibrary> {
-        self.try_fab_library_items(account_id).await.ok()
+        self.try_fab_library_items(account_id, count).await.ok()
     }
 
     /// Parse a Fab download manifest from a specific distribution point.
