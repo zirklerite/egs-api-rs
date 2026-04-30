@@ -364,6 +364,7 @@ mod tests {
         assert!(params.is_free.is_none());
         assert!(params.min_discount_percentage.is_none());
         assert!(params.seller.is_none());
+        assert!(params.extra_params.is_none());
     }
 
     #[test]
@@ -649,7 +650,11 @@ pub struct FabSearchParams {
     pub listing_types: Option<String>,
     /// Category filter
     pub categories: Option<String>,
-    /// Sort order: `-relevance`, `-createdAt`, `createdAt`, `-price`, `price`
+    /// Sort order. Observed accepted values: `-relevance`, `-createdAt`,
+    /// `createdAt`, `firstPublishedAt`, `price`, `-price`,
+    /// `-min_discount_percentage`, `title`, `-title`,
+    /// `-ratings.averageRating`. Fab's accepted set may grow; this is a
+    /// best-effort enumeration. The leading `-` indicates descending.
     pub sort_by: Option<String>,
     /// Results per page
     pub count: Option<u32>,
@@ -667,6 +672,14 @@ pub struct FabSearchParams {
     pub min_discount_percentage: Option<u32>,
     /// Filter by seller name
     pub seller: Option<String>,
+    /// Additional `?key=value` pairs forwarded verbatim to the search
+    /// endpoint. Repeated keys are preserved in insertion order to match
+    /// Fab's multi-valued convention (e.g. two
+    /// `("styles", "anime"), ("styles", "lowpoly")` tuples emit
+    /// `?styles=anime&styles=lowpoly`). Values are URL-encoded by the
+    /// builder; keys are forwarded raw so typos surface as empty result
+    /// sets rather than `%`-mangled garbage.
+    pub extra_params: Option<Vec<(String, String)>>,
 }
 
 /// Asset format info for a listing from `GET /i/listings/{uid}/asset-formats`.

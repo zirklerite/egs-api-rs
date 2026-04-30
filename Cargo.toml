@@ -24,6 +24,7 @@ flate2 = "1"
 num = "0.4"
 uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "^0.3", features = ["serde", "parsing", "serde-well-known"] }
+urlencoding = "2"
 
 [dependencies.tokio]
 version = "1"

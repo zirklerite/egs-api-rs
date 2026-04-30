@@ -170,54 +170,7 @@ impl EpicAPI {
         &self,
         params: &crate::api::types::fab_search::FabSearchParams,
     ) -> Result<crate::api::types::fab_search::FabSearchResults, EpicAPIError> {
-        let mut url = "https://www.fab.com/i/listings/search?".to_string();
-        let mut query_parts = Vec::new();
-
-        if let Some(ref q) = params.q {
-            query_parts.push(format!("q={}", q));
-        }
-        if let Some(ref channels) = params.channels {
-            query_parts.push(format!("channels={}", channels));
-        }
-        if let Some(ref listing_types) = params.listing_types {
-            query_parts.push(format!("listing_types={}", listing_types));
-        }
-        if let Some(ref categories) = params.categories {
-            query_parts.push(format!("categories={}", categories));
-        }
-        if let Some(ref sort_by) = params.sort_by {
-            query_parts.push(format!("sort_by={}", sort_by));
-        }
-        if let Some(count) = params.count {
-            query_parts.push(format!("count={}", count));
-        }
-        if let Some(ref cursor) = params.cursor {
-            query_parts.push(format!("cursor={}", cursor));
-        }
-        if let Some(ref aggregate_on) = params.aggregate_on {
-            query_parts.push(format!("aggregate_on={}", aggregate_on));
-        }
-        if let Some(ref in_filter) = params.in_filter {
-            query_parts.push(format!("in={}", in_filter));
-        }
-        if let Some(is_discounted) = params.is_discounted
-            && is_discounted
-        {
-            query_parts.push("is_discounted=true".to_string());
-        }
-        if let Some(is_free) = params.is_free
-            && is_free
-        {
-            query_parts.push("is_free=1".to_string());
-        }
-        if let Some(pct) = params.min_discount_percentage {
-            query_parts.push(format!("min_discount_percentage={}", pct));
-        }
-        if let Some(ref seller) = params.seller {
-            query_parts.push(format!("seller={}", seller));
-        }
-
-        url.push_str(&query_parts.join("&"));
+        let url = build_fab_search_url(params);
         self.get_json(&url).await
     }
 
@@ -490,6 +443,68 @@ impl EpicAPI {
     }
 }
 
+/// Build the Fab search URL from `FabSearchParams`. Typed fields are
+/// emitted first (preserving prior behaviour), then `extra_params`
+/// tuples in insertion order with values URL-encoded.
+pub(crate) fn build_fab_search_url(
+    params: &crate::api::types::fab_search::FabSearchParams,
+) -> String {
+    let mut url = "https://www.fab.com/i/listings/search?".to_string();
+    let mut query_parts: Vec<String> = Vec::new();
+
+    if let Some(ref q) = params.q {
+        query_parts.push(format!("q={}", q));
+    }
+    if let Some(ref channels) = params.channels {
+        query_parts.push(format!("channels={}", channels));
+    }
+    if let Some(ref listing_types) = params.listing_types {
+        query_parts.push(format!("listing_types={}", listing_types));
+    }
+    if let Some(ref categories) = params.categories {
+        query_parts.push(format!("categories={}", categories));
+    }
+    if let Some(ref sort_by) = params.sort_by {
+        query_parts.push(format!("sort_by={}", sort_by));
+    }
+    if let Some(count) = params.count {
+        query_parts.push(format!("count={}", count));
+    }
+    if let Some(ref cursor) = params.cursor {
+        query_parts.push(format!("cursor={}", cursor));
+    }
+    if let Some(ref aggregate_on) = params.aggregate_on {
+        query_parts.push(format!("aggregate_on={}", aggregate_on));
+    }
+    if let Some(ref in_filter) = params.in_filter {
+        query_parts.push(format!("in={}", in_filter));
+    }
+    if let Some(is_discounted) = params.is_discounted
+        && is_discounted
+    {
+        query_parts.push("is_discounted=true".to_string());
+    }
+    if let Some(is_free) = params.is_free
+        && is_free
+    {
+        query_parts.push("is_free=1".to_string());
+    }
+    if let Some(pct) = params.min_discount_percentage {
+        query_parts.push(format!("min_discount_percentage={}", pct));
+    }
+    if let Some(ref seller) = params.seller {
+        query_parts.push(format!("seller={}", seller));
+    }
+    if let Some(ref extras) = params.extra_params {
+        for (k, v) in extras {
+            query_parts.push(format!("{}={}", k, urlencoding::encode(v)));
+        }
+    }
+
+    url.push_str(&query_parts.join("&"));
+    url
+}
+
 /// Split a full signed manifest URL into `(CloudDir base, query string)`.
 ///
 /// Input:  `https://host/.../CloudDir/Name.manifest?f_token=SIG`
@@ -508,7 +523,8 @@ fn split_manifest_url(url: &str) -> (String, Option<String>) {
 
 #[cfg(test)]
 mod tests {
-    use super::split_manifest_url;
+    use super::{build_fab_search_url, split_manifest_url};
+    use crate::api::types::fab_search::FabSearchParams;
 
     #[test]
     fn split_manifest_url_with_query() {
@@ -527,5 +543,52 @@ mod tests {
         let (base, q) = split_manifest_url("https://host/path/file.manifest");
         assert_eq!(base, "https://host/path");
         assert_eq!(q, None);
+    }
+
+    #[test]
+    fn search_url_extra_params_repeated_keys_and_encoding() {
+        let params = FabSearchParams {
+            extra_params: Some(vec![
+                ("foo".into(), "a".into()),
+                ("foo".into(), "b".into()),
+                ("bar".into(), "hello world".into()),
+            ]),
+            ..Default::default()
+        };
+        let url = build_fab_search_url(&params);
+        assert!(
+            url.contains("foo=a&foo=b&bar=hello%20world"),
+            "expected `foo=a&foo=b&bar=hello%20world` in URL, got: {url}"
+        );
+    }
+
+    #[test]
+    fn search_url_typed_fields_emit_before_extra_params() {
+        let params = FabSearchParams {
+            q: Some("tree".into()),
+            count: Some(5),
+            extra_params: Some(vec![("styles".into(), "anime".into())]),
+            ..Default::default()
+        };
+        let url = build_fab_search_url(&params);
+        let q_pos = url.find("q=tree").expect("q= should be present");
+        let count_pos = url.find("count=5").expect("count= should be present");
+        let styles_pos = url
+            .find("styles=anime")
+            .expect("styles= should be present");
+        assert!(
+            q_pos < count_pos && count_pos < styles_pos,
+            "expected typed fields before extra_params; got: {url}"
+        );
+    }
+
+    #[test]
+    fn search_url_no_extra_params() {
+        let params = FabSearchParams {
+            q: Some("foo".into()),
+            ..Default::default()
+        };
+        let url = build_fab_search_url(&params);
+        assert!(url.ends_with("?q=foo"), "got: {url}");
     }
 }
