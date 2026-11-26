@@ -101,6 +101,10 @@ pub struct FabListingDetail {
     pub tags: Option<Vec<FabTag>>,
     pub thumbnails: Option<Vec<FabThumbnail>>,
     pub review_count: Option<u64>,
+    /// The seller forbids using the asset to train AI.
+    pub is_ai_forbidden: Option<bool>,
+    /// The seller declared the asset AI-generated.
+    pub is_ai_generated: Option<bool>,
 }
 
 /// Asset format type descriptor.
