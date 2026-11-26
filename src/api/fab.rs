@@ -107,6 +107,10 @@ impl EpicAPI {
     /// controls the per-page size requested from Fab; `None` keeps the
     /// legacy default of 100. (Fab may silently cap below the
     /// requested value.)
+    ///
+    /// Either every page is fetched or the call fails: a page error is
+    /// returned as-is (never a partial library), and a cursor that
+    /// repeats ends the walk with an error instead of looping forever.
     pub async fn fab_library_items(
         &mut self,
         account_id: String,
@@ -114,6 +118,9 @@ impl EpicAPI {
     ) -> Result<FabLibrary, EpicAPIError> {
         let per_page = count.unwrap_or(100);
         let mut library = FabLibrary::default();
+        let mut seen_cursors = std::collections::HashSet::new();
+        // Page errors propagate (`?`) instead of ending the walk early:
+        // a partial library looks complete to every caller.
 
         loop {
             let url = match &library.cursors.next {
@@ -131,16 +138,9 @@ impl EpicAPI {
                 }
             };
 
-            match self.authorized_get_json::<FabLibrary>(&url).await {
-                Ok(mut api_library) => {
-                    library.cursors.next = api_library.cursors.next;
-                    library.results.append(api_library.results.borrow_mut());
-                }
-                Err(e) => {
-                    error!("{:?}", e);
-                    library.cursors.next = None;
-                }
-            }
+            let mut page = self.authorized_get_json::<FabLibrary>(&url).await?;
+            library.results.append(page.results.borrow_mut());
+            library.cursors.next = advance_library_cursor(&mut seen_cursors, page.cursors.next)?;
             if library.cursors.next.is_none() {
                 break;
             }
@@ -521,10 +521,46 @@ fn split_manifest_url(url: &str) -> (String, Option<String>) {
     (base, query_part)
 }
 
+/// One pagination step of the Fab library walk: the cursor for the
+/// next page, `None` when the walk is done, or an error when Fab hands
+/// back a cursor it already gave (which would otherwise loop forever).
+fn advance_library_cursor(
+    seen: &mut std::collections::HashSet<String>,
+    next: Option<String>,
+) -> Result<Option<String>, EpicAPIError> {
+    match next {
+        Some(cursor) if !seen.insert(cursor.clone()) => Err(EpicAPIError::APIError(format!(
+            "Fab library pagination returned cursor {cursor:?} twice"
+        ))),
+        next => Ok(next),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{build_fab_search_url, split_manifest_url};
+    use super::{advance_library_cursor, build_fab_search_url, split_manifest_url};
     use crate::api::types::fab_search::FabSearchParams;
+
+    #[test]
+    fn library_cursor_advances_until_none() {
+        let mut seen = std::collections::HashSet::new();
+        assert_eq!(
+            advance_library_cursor(&mut seen, Some("a".into())).unwrap(),
+            Some("a".into())
+        );
+        assert_eq!(
+            advance_library_cursor(&mut seen, Some("b".into())).unwrap(),
+            Some("b".into())
+        );
+        assert_eq!(advance_library_cursor(&mut seen, None).unwrap(), None);
+    }
+
+    #[test]
+    fn library_cursor_repeat_is_an_error() {
+        let mut seen = std::collections::HashSet::new();
+        advance_library_cursor(&mut seen, Some("a".into())).unwrap();
+        assert!(advance_library_cursor(&mut seen, Some("a".into())).is_err());
+    }
 
     #[test]
     fn split_manifest_url_with_query() {
