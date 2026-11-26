@@ -105,6 +105,21 @@ pub struct FabListingDetail {
     pub is_ai_forbidden: Option<bool>,
     /// The seller declared the asset AI-generated.
     pub is_ai_generated: Option<bool>,
+    /// License tiers (e.g. Personal / Professional), each with the
+    /// `listingLicenseId` Fab's cart takes and its offer.
+    pub licenses: Option<Vec<FabListingLicense>>,
+}
+
+/// One license tier of a listing, from `GET /i/listings/{uid}`.
+#[allow(missing_docs)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FabListingLicense {
+    pub listing_license_id: Option<String>,
+    pub slug: Option<String>,
+    pub name: Option<String>,
+    pub offer_id: Option<String>,
+    pub price_tier: Option<serde_json::Value>,
 }
 
 /// Asset format type descriptor.
